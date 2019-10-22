@@ -1,3 +1,4 @@
+import re
 import sys
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
@@ -55,16 +56,16 @@ class CompressionHTTPRequestHandler(BaseHTTPRequestHandler):
             self._answer_no_headers_found()
             return
 
-        headers = b'\r\n'.join(body_lines[:headers_end_index])
+        headers = b'\r\n'.join(body_lines[:headers_end_index]).decode("UTF-8")
         file_content = b'\r\n'.join(body_lines[headers_end_index + 1:])
 
-        print('This is POST request. Headers:')
-        print(headers)
-        print()
-        print('Received file:')
-        print(file_content)
+        found_names = re.findall('filename=\"(.+)\"', headers)
 
-        file_name = 'file'  # todo: get name from headers
+        if len(found_names) == 0:
+            self._answer_no_filename_found()
+            return
+
+        file_name = found_names[0]
         self._create_archive(compressor, file_name, file_content)
 
     def _create_archive(self, compressor: AbstractCompressor, file_name: str, file_content: bytes):
@@ -102,6 +103,11 @@ class CompressionHTTPRequestHandler(BaseHTTPRequestHandler):
         self.send_response(400)
         self.end_headers()
         self.wfile.write(b'Error: no headers found in your request')
+
+    def _answer_no_filename_found(self):
+        self.send_response(400)
+        self.end_headers()
+        self.wfile.write(b'Error: no filename header found in your request')
 
 
 def main():

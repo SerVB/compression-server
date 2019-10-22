@@ -73,7 +73,7 @@ class CompressionHTTPRequestHandler(BaseHTTPRequestHandler):
         compressor.put(file_name, file_content)
         archive_bytes = compressor.get_archive_bytes()
 
-        archive_name = 'archive.zip'  # todo: get name from compressor
+        archive_name = compressor.add_extension(file_name)
 
         self._answer_archive_bytes(archive_name, archive_bytes)
 

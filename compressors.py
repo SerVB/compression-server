@@ -15,6 +15,9 @@ class AbstractCompressor:
     def get_archive_bytes(self) -> bytes:
         pass
 
+    def add_extension(self, prefix: str) -> str:
+        pass
+
 
 class ZipCompressor(AbstractCompressor):
 
@@ -39,6 +42,9 @@ class ZipCompressor(AbstractCompressor):
         self._zip_file_adapter = None
 
         return archive_bytes
+
+    def add_extension(self, prefix: str) -> str:
+        return prefix + ".zip"
 
 
 COMPRESSORS: Dict[str, AbstractCompressor] = {

@@ -2,7 +2,7 @@ import re
 import sys
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
-from compressors import COMPRESSORS, AbstractCompressor
+from compressors import ZIP_COMPRESSORS, AbstractCompressor
 
 try:
     _PORT = int(sys.argv[1])
@@ -17,31 +17,13 @@ def strip_http_headers(http_reply):
     return http_reply
 
 
-class CompressionHTTPRequestHandler(BaseHTTPRequestHandler):
+class SplittingHTTPRequestHandler(BaseHTTPRequestHandler):
 
     # noinspection PyPep8Naming
     def do_POST(self):
-        self._parse_url()
+        self._split_body()
 
-    def _parse_url(self):
-        split_path = self.path.split("/")
-        if len(split_path) != 3:
-            self._answer_bad_post_path()
-            return
-
-        empty, convert, output_type = split_path
-        if empty != "" or convert != "convert":
-            self._answer_bad_post_path()
-            return
-
-        if output_type not in COMPRESSORS:
-            self._answer_bad_post_output_type(output_type)
-            return
-
-        compressor = COMPRESSORS[output_type]
-        self._parse_body(compressor)
-
-    def _parse_body(self, compressor: AbstractCompressor):
+    def _split_body(self):
         content_length = int(self.headers['Content-Length'])
         body = self.rfile.read(content_length)
 
@@ -59,6 +41,20 @@ class CompressionHTTPRequestHandler(BaseHTTPRequestHandler):
         headers = b'\r\n'.join(body_lines[:headers_end_index]).decode("UTF-8")
         file_content = b'\r\n'.join(body_lines[headers_end_index + 1:])
 
+        self._parse_split_body(headers, file_content)
+
+    def _parse_split_body(self, headers: str, file_content: bytes):
+        pass
+
+    def _answer_no_headers_found(self):
+        self.send_response(400)
+        self.end_headers()
+        self.wfile.write(b'Error: no headers found in your request')
+
+
+class CompressionHTTPRequestHandler(SplittingHTTPRequestHandler):
+
+    def _parse_split_body(self, headers: str, file_content: bytes):
         found_names = re.findall('filename=\"(.+)\"', headers)
 
         if len(found_names) == 0:
@@ -66,6 +62,25 @@ class CompressionHTTPRequestHandler(BaseHTTPRequestHandler):
             return
 
         file_name = found_names[0]
+
+        self._parse_url(file_name, file_content)
+
+    def _parse_url(self, file_name: str, file_content: bytes):
+        split_path = self.path.split("/")
+        if len(split_path) != 3:
+            self._answer_bad_post_path()
+            return
+
+        empty, convert, output_type = split_path
+        if empty != "" or convert != "convert":
+            self._answer_bad_post_path()
+            return
+
+        if output_type not in ZIP_COMPRESSORS:
+            self._answer_bad_post_output_type(output_type)
+            return
+
+        compressor = ZIP_COMPRESSORS[output_type]
         self._create_archive(compressor, file_name, file_content)
 
     def _create_archive(self, compressor: AbstractCompressor, file_name: str, file_content: bytes):
@@ -95,14 +110,9 @@ class CompressionHTTPRequestHandler(BaseHTTPRequestHandler):
         self.wfile.write(
             b"Error: bad output type ('%s'). Available: %s\n" % (
                 output_type.encode("UTF-8"),
-                str(set(COMPRESSORS.keys())).encode("UTF-8"),
+                str(set(ZIP_COMPRESSORS.keys())).encode("UTF-8"),
             )
         )
-
-    def _answer_no_headers_found(self):
-        self.send_response(400)
-        self.end_headers()
-        self.wfile.write(b'Error: no headers found in your request')
 
     def _answer_no_filename_found(self):
         self.send_response(400)

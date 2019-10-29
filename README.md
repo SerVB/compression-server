@@ -1,3 +1,5 @@
+[![Python 3](https://img.shields.io/badge/python-3-blue.svg)](https://www.python.org/download/releases/2.7.7/)
+[![Build status](https://github.com/SerVB/compression-server/workflows/tests/badge.svg)](https://github.com/SerVB/compression-server/actions)
 # compression-server
 ## How to try?
 Start the server by

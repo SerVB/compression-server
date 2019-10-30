@@ -106,15 +106,18 @@ class TestServer(unittest.TestCase):
             with open(file_name, "r", encoding="UTF-8") as opened_file:
                 file_content = opened_file.read()
                 for compressor_name, compressor in ZIP_COMPRESSORS.items():
-                    subprocess.run(
-                        args='curl -F "file=@{dir}/{file}" http://localhost:{port}/convert/{type} -o {type}'.format(
-                            dir=os.getcwd(),
-                            file=file_name,
-                            port=self.PORT,
-                            type=compressor_name,
-                        ),
-                        shell=True,
-                    )
+                    with open(os.devnull, "w") as null:
+                        subprocess.run(
+                            args='curl -F "file=@{dir}/{file}" http://localhost:{port}/convert/{type} -o {type}'.format(
+                                dir=os.getcwd(),
+                                file=file_name,
+                                port=self.PORT,
+                                type=compressor_name,
+                            ),
+                            stdout=null,
+                            stderr=null,
+                            shell=True,
+                        )
 
                     archive_file = ZipFile(compressor_name, mode="r", compression=compressor.compression_type)
                     archived_file_content = archive_file.read(file_name).decode("UTF-8")

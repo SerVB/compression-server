@@ -1,10 +1,16 @@
+import os
+import subprocess
+import time
 import unittest
 import zipfile
+from http.server import HTTPServer
 from io import BytesIO
-from typing import Dict
+from threading import Thread
+from typing import Dict, Optional
 from zipfile import ZipFile
 
 from compressors import ZIP_COMPRESSORS
+from server import CompressionHTTPRequestHandler
 
 
 # noinspection DuplicatedCode
@@ -73,6 +79,48 @@ class TestCompressors(unittest.TestCase):
 
             archive_file = ZipFile(bytes_io, mode="r", compression=compressor.compression_type)
             self.assertEqual(archive_file.read(filename), data)
+
+
+class TestServer(unittest.TestCase):
+    PORT = 8887
+    httpd: Optional[HTTPServer] = None
+    thread: Optional[Thread] = None
+
+    def setUp(self):
+        def create_server():
+            with HTTPServer(("", self.PORT), CompressionHTTPRequestHandler) as httpd:
+                self.httpd = httpd
+                httpd.serve_forever()
+
+        self.thread = Thread(target=create_server)
+        self.thread.start()
+
+        time.sleep(2)  # Give the server some time to start
+
+    def tearDown(self):
+        self.httpd.shutdown()
+        self.thread.join()
+
+    def test_file_savings(self):
+        for file_name in ("text.txt", "text-empty.txt"):
+            with open(file_name, "r", encoding="UTF-8") as opened_file:
+                file_content = opened_file.read()
+                for compressor_name, compressor in ZIP_COMPRESSORS.items():
+                    subprocess.run(
+                        args='curl -F "file=@{dir}/{file}" http://localhost:{port}/convert/{type} -o {type}'.format(
+                            dir=os.getcwd(),
+                            file=file_name,
+                            port=self.PORT,
+                            type=compressor_name,
+                        ),
+                        shell=True,
+                    )
+
+                    archive_file = ZipFile(compressor_name, mode="r", compression=compressor.compression_type)
+                    archived_file_content = archive_file.read(file_name).decode("UTF-8")
+                    self.assertEqual(archived_file_content, file_content,
+                                     msg="File %s, compressor %s" % (file_name, compressor_name))
+                    os.remove(compressor_name)
 
 
 if __name__ == '__main__':

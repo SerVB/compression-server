@@ -2,7 +2,7 @@ import re
 import sys
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
-from compressors import ZIP_COMPRESSORS, AbstractCompressor
+from compressors import ZIP_COMPRESSOR_TYPES, AbstractCompressor, ZipCompressorFactory
 
 try:
     _PORT = int(sys.argv[1])
@@ -80,11 +80,11 @@ class CompressionHTTPRequestHandler(SplittingHTTPRequestHandler):
             self._answer_bad_post_path()
             return
 
-        if output_type not in ZIP_COMPRESSORS:
+        if output_type not in ZIP_COMPRESSOR_TYPES:
             self._answer_bad_post_output_type(output_type)
             return
 
-        compressor = ZIP_COMPRESSORS[output_type]
+        compressor = ZipCompressorFactory(ZIP_COMPRESSOR_TYPES[output_type]).create()
         self._create_archive(compressor, file_name, file_content)
 
     def _create_archive(self, compressor: AbstractCompressor, file_name: str, file_content: bytes):
@@ -114,7 +114,7 @@ class CompressionHTTPRequestHandler(SplittingHTTPRequestHandler):
         self.wfile.write(
             b"Error: bad output type ('%s'). Available: %s\n" % (
                 output_type.encode("UTF-8"),
-                str(set(ZIP_COMPRESSORS.keys())).encode("UTF-8"),
+                str(set(ZIP_COMPRESSOR_TYPES.keys())).encode("UTF-8"),
             )
         )
 

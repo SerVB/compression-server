@@ -47,9 +47,18 @@ class ZipCompressor(AbstractCompressor):
         return prefix + ".zip"
 
 
-ZIP_COMPRESSORS: Dict[str, ZipCompressor] = {
-    "zipStored": ZipCompressor(zipfile.ZIP_STORED),
-    "zipDeflate": ZipCompressor(zipfile.ZIP_DEFLATED),
-    "zipBzip2": ZipCompressor(zipfile.ZIP_BZIP2),
-    "zipLzma": ZipCompressor(zipfile.ZIP_LZMA),
+class ZipCompressorFactory:
+
+    def __init__(self, compression_type: int):
+        self.compression_type = compression_type
+
+    def create(self) -> ZipCompressor:
+        return ZipCompressor(self.compression_type)
+
+
+ZIP_COMPRESSOR_TYPES: Dict[str, int] = {
+    "zipStored": zipfile.ZIP_STORED,
+    "zipDeflate": zipfile.ZIP_DEFLATED,
+    "zipBzip2": zipfile.ZIP_BZIP2,
+    "zipLzma": zipfile.ZIP_LZMA,
 }

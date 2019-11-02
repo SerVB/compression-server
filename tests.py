@@ -2,42 +2,27 @@ import os
 import subprocess
 import time
 import unittest
-import zipfile
 from http.server import HTTPServer
 from io import BytesIO
 from threading import Thread
-from typing import Dict, Optional
+from typing import Optional
 from zipfile import ZipFile
 
-from compressors import ZIP_COMPRESSORS
+from compressors import ZIP_COMPRESSOR_TYPES, ZipCompressorFactory
 from server import CompressionHTTPRequestHandler
 
 
 # noinspection DuplicatedCode
 class TestCompressors(unittest.TestCase):
-    ZIP_DECOMPRESSORS: Dict[str, int] = {
-        "zipStored": zipfile.ZIP_STORED,
-        "zipDeflate": zipfile.ZIP_DEFLATED,
-        "zipBzip2": zipfile.ZIP_BZIP2,
-        "zipLzma": zipfile.ZIP_LZMA,
-    }
 
     def setUp(self):
         pass
 
-    def test_compressors_match_decompressors(self):
-        self.assertSetEqual(set(ZIP_COMPRESSORS.keys()), set(self.ZIP_DECOMPRESSORS.keys()))
-
-    def test_compressors_match_decompressors_types(self):
-        for name, compressor in ZIP_COMPRESSORS.items():
-            compressor_type = compressor.compression_type
-            decompressor_type = self.ZIP_DECOMPRESSORS[name]
-            self.assertEqual(compressor_type, decompressor_type)
-
     def test_putting_unavailable_after_getting_archive_bytes(self):
         data = b"abcba31" * 100500
         filename = "test-file-name5434"
-        for name, compressor in ZIP_COMPRESSORS.items():
+        for name, compression_type in ZIP_COMPRESSOR_TYPES.items():
+            compressor = ZipCompressorFactory(compression_type).create()
             compressor.create_archive()
             compressor.put(filename, data)
             compressor.get_archive_bytes()
@@ -47,7 +32,8 @@ class TestCompressors(unittest.TestCase):
     def test_getting_unavailable_after_getting_archive_bytes(self):
         data = b"abcba3" * 100500
         filename = "test-file-name31231"
-        for name, compressor in ZIP_COMPRESSORS.items():
+        for name, compression_type in ZIP_COMPRESSOR_TYPES.items():
+            compressor = ZipCompressorFactory(compression_type).create()
             compressor.create_archive()
             compressor.put(filename, data)
             compressor.get_archive_bytes()
@@ -57,7 +43,8 @@ class TestCompressors(unittest.TestCase):
     def test_file_set_in_archive(self):
         data = b"abcba1" * 100500
         filename = "test-file-name321"
-        for name, compressor in ZIP_COMPRESSORS.items():
+        for name, compression_type in ZIP_COMPRESSOR_TYPES.items():
+            compressor = ZipCompressorFactory(compression_type).create()
             compressor.create_archive()
             compressor.put(filename, data)
             archive_bytes = compressor.get_archive_bytes()
@@ -70,7 +57,8 @@ class TestCompressors(unittest.TestCase):
     def test_correct_compression_via_decompression(self):
         data = b"abcba3" * 100500
         filename = "test-file-name21"
-        for name, compressor in ZIP_COMPRESSORS.items():
+        for name, compression_type in ZIP_COMPRESSOR_TYPES.items():
+            compressor = ZipCompressorFactory(compression_type).create()
             compressor.create_archive()
             compressor.put(filename, data)
             archive_bytes = compressor.get_archive_bytes()
@@ -85,6 +73,7 @@ def append_test_file_path(file_name: str) -> str:
     return "test-files/%s" % file_name
 
 
+# noinspection DuplicatedCode
 class TestServer(unittest.TestCase):
     PORT = 8887
     httpd: Optional[HTTPServer] = None
@@ -109,7 +98,7 @@ class TestServer(unittest.TestCase):
         for file_name in ("text.txt", "text-empty.txt"):
             with open(append_test_file_path(file_name), "r", encoding="UTF-8") as opened_file:
                 file_content = opened_file.read()
-                for compressor_name, compressor in ZIP_COMPRESSORS.items():
+                for compressor_name, compression_type in ZIP_COMPRESSOR_TYPES.items():
                     with open(os.devnull, "w") as null:
                         subprocess.run(
                             args='curl -F "file=@{dir}/{file}" http://localhost:{port}/convert/{type} -o {type}'.format(
@@ -123,11 +112,62 @@ class TestServer(unittest.TestCase):
                             shell=True,
                         )
 
-                    archive_file = ZipFile(compressor_name, mode="r", compression=compressor.compression_type)
+                    archive_file = ZipFile(compressor_name, mode="r", compression=compression_type)
                     archived_file_content = archive_file.read(file_name).decode("UTF-8")
                     self.assertEqual(archived_file_content, file_content,
                                      msg="File %s, compressor %s" % (file_name, compressor_name))
                     os.remove(compressor_name)
+
+    def test_simultaneous_requests(self):
+        def request_archive(thread_return: list, file_name: str, compressor_name: str, compression_type: str,
+                            thread_id: int):
+            with open(append_test_file_path(file_name), "r", encoding="UTF-8") as opened_file:
+                file_content = opened_file.read()
+                out_file = "%s-%s" % (compressor_name, thread_id)
+                with open(os.devnull, "w") as null:
+                    subprocess.run(
+                        args='curl -F "file=@{dir}/{file}" http://localhost:{port}/convert/{type} -o {out}'.format(
+                            dir=os.getcwd(),
+                            file=append_test_file_path(file_name),
+                            port=self.PORT,
+                            type=compressor_name,
+                            out=out_file,
+                        ),
+                        stdout=null,
+                        stderr=null,
+                        shell=True,
+                    )
+
+                archive_file = ZipFile(out_file, mode="r", compression=compression_type)
+                archived_file_content = archive_file.read(file_name).decode("UTF-8")
+                thread_return.append(archived_file_content == file_content)
+                os.remove(out_file)
+
+        requests_count = 10
+        requests = list()
+
+        for compressor_name, compression_type in ZIP_COMPRESSOR_TYPES.items():
+            for thread_id in range(requests_count):
+                for file_name in ("text.txt", "text-empty.txt"):
+                    thread_return = list()
+                    thread = Thread(target=request_archive,
+                                    args=(
+                                        thread_return,
+                                        file_name,
+                                        compressor_name,
+                                        compression_type,
+                                        len(requests),
+                                    ))
+                    thread_return.append(thread)
+
+                    requests.append(thread_return)
+
+        for request in requests:
+            request[0].start()
+
+        for request in requests:
+            request[0].join()
+            self.assertTrue(request[1])
 
 
 if __name__ == '__main__':

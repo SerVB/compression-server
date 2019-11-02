@@ -95,8 +95,8 @@ class TestServer(unittest.TestCase):
         self.thread.join()
 
     def test_file_savings(self):
-        for file_name in ("text.txt", "text-empty.txt"):
-            with open(append_test_file_path(file_name), "r", encoding="UTF-8") as opened_file:
+        for file_name in ("text.txt", "text-empty.txt", "large-file.bin"):
+            with open(append_test_file_path(file_name), "rb") as opened_file:
                 file_content = opened_file.read()
                 for compressor_name, compression_type in ZIP_COMPRESSOR_TYPES.items():
                     with open(os.devnull, "w") as null:
@@ -113,7 +113,7 @@ class TestServer(unittest.TestCase):
                         )
 
                     archive_file = ZipFile(compressor_name, mode="r", compression=compression_type)
-                    archived_file_content = archive_file.read(file_name).decode("UTF-8")
+                    archived_file_content = archive_file.read(file_name)
                     self.assertEqual(archived_file_content, file_content,
                                      msg="File %s, compressor %s" % (file_name, compressor_name))
                     os.remove(compressor_name)
@@ -121,7 +121,7 @@ class TestServer(unittest.TestCase):
     def test_simultaneous_requests(self):
         def request_archive(thread_return: list, file_name: str, compressor_name: str, compression_type: str,
                             thread_id: int):
-            with open(append_test_file_path(file_name), "r", encoding="UTF-8") as opened_file:
+            with open(append_test_file_path(file_name), "rb") as opened_file:
                 file_content = opened_file.read()
                 out_file = "%s-%s" % (compressor_name, thread_id)
                 with open(os.devnull, "w") as null:
@@ -139,16 +139,16 @@ class TestServer(unittest.TestCase):
                     )
 
                 archive_file = ZipFile(out_file, mode="r", compression=compression_type)
-                archived_file_content = archive_file.read(file_name).decode("UTF-8")
+                archived_file_content = archive_file.read(file_name)
                 thread_return.append(archived_file_content == file_content)
                 os.remove(out_file)
 
-        requests_count = 10
+        requests_count = 2
         requests = list()
 
         for compressor_name, compression_type in ZIP_COMPRESSOR_TYPES.items():
             for thread_id in range(requests_count):
-                for file_name in ("text.txt", "text-empty.txt"):
+                for file_name in ("text.txt", "text-empty.txt", "large-file.bin"):
                     thread_return = list()
                     thread = Thread(target=request_archive,
                                     args=(

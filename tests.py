@@ -81,6 +81,10 @@ class TestCompressors(unittest.TestCase):
             self.assertEqual(archive_file.read(filename), data)
 
 
+def append_test_file_path(file_name: str) -> str:
+    return "test-files/%s" % file_name
+
+
 class TestServer(unittest.TestCase):
     PORT = 8887
     httpd: Optional[HTTPServer] = None
@@ -103,14 +107,14 @@ class TestServer(unittest.TestCase):
 
     def test_file_savings(self):
         for file_name in ("text.txt", "text-empty.txt"):
-            with open(file_name, "r", encoding="UTF-8") as opened_file:
+            with open(append_test_file_path(file_name), "r", encoding="UTF-8") as opened_file:
                 file_content = opened_file.read()
                 for compressor_name, compressor in ZIP_COMPRESSORS.items():
                     with open(os.devnull, "w") as null:
                         subprocess.run(
                             args='curl -F "file=@{dir}/{file}" http://localhost:{port}/convert/{type} -o {type}'.format(
                                 dir=os.getcwd(),
-                                file=file_name,
+                                file=append_test_file_path(file_name),
                                 port=self.PORT,
                                 type=compressor_name,
                             ),

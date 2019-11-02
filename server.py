@@ -19,6 +19,10 @@ def strip_http_headers(http_reply):
 
 class SplittingHTTPRequestHandler(BaseHTTPRequestHandler):
 
+    # noinspection PyShadowingBuiltins
+    def log_message(self, format, *args):
+        pass  # Disable logging
+
     # noinspection PyPep8Naming
     def do_POST(self):
         self._split_body()

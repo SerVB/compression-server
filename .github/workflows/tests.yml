@@ -15,5 +15,7 @@ jobs:
         with:
           python-version: '3.x'
           architecture: 'x64'
+      - name: Install flask
+        run: pip install flask
       - name: Run tests
         run: python tests.py

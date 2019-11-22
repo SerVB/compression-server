@@ -2,16 +2,17 @@
 [![Build status](https://github.com/SerVB/compression-server/workflows/tests/badge.svg)](https://github.com/SerVB/compression-server/actions)
 # compression-server
 ## How to try?
-Start the server by
+Start the server by (it starts on the port 5000)
 ```shell script
-python server.py [PORT]
+export FLASK_APP=flask_server.py
+python -m flask run
 ```
 
 If you don't define a port, default one will be used.
 
 Then you can compress some files using `curl`:
 ```shell script
-curl -F "file=@/home/servb/PycharmProjects/compression-server/text.txt" http://localhost:8080/convert/zipLzma -o answer.zip
+curl -F "file=@/home/servb/PycharmProjects/compression-server/text.txt" http://localhost:5000/convert/zipLzma -o answer.zip
 ```
 
 ## Running tests

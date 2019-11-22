@@ -89,23 +89,6 @@ class TestFlaskServer(unittest.TestCase):
         self.server.terminate()
         self.server.join()
 
-    # def testResponnce(self):
-    #     subprocess.run(
-    #         args='curl -F "file=@{dir}/{file}" http://localhost:{port}/convert/{type} -o {type}'.format(
-    #             dir=os.getcwd(),
-    #             file=append_test_file_path('text.txt'),
-    #             port=self.PORT,
-    #             type='zipStored',
-    #         ),
-    #         shell=True,
-    #     )
-    #     archive_file = ZipFile(compressor_name, mode="r", compression=compression_type)
-    #     archived_file_content = archive_file.read(file_name)
-    #     self.assertEqual(archived_file_content, file_content,
-    #                      msg="File %s, compressor %s" % (file_name, compressor_name))
-    #     os.remove(compressor_name)
-
-
     def test_file_savings(self):
         for file_name in ("text.txt", "text-empty.txt", "large-file.bin"):
             with open(append_test_file_path(file_name), "rb") as opened_file:
@@ -186,7 +169,7 @@ class TestFlaskServer(unittest.TestCase):
 
 # noinspection DuplicatedCode
 class TestServer(unittest.TestCase):
-    PORT = 8080
+    PORT = 8887
     httpd: Optional[HTTPServer] = None
     thread: Optional[Thread] = None
 

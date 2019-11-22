@@ -2,7 +2,6 @@ from flask import Flask
 from flask import request
 from flask import Response
 from io import BytesIO
-from flask import render_template
 from flask import send_file
 from compressors import ZipCompressor, ZipCompressorFactory, ZIP_COMPRESSOR_TYPES
 

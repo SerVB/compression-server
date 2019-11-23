@@ -2,7 +2,7 @@ from flask import Flask
 from flask import request
 from flask import Response
 from io import BytesIO
-from flask import send_file
+from flask import send_file, render_template
 from compressors import ZipCompressor, ZipCompressorFactory, ZIP_COMPRESSOR_TYPES
 
 app = Flask(__name__)
@@ -30,6 +30,11 @@ def handle_request(output_type):
     archive_content = compressor.get_archive_bytes()
     archive_name = compressor.add_extension(file_key)
     return send_file(BytesIO(archive_content), as_attachment=True, attachment_filename=archive_name)
+
+@app.route('/')
+@app.route('/toy.html')
+def frontend():
+    return render_template('toy.html')
 
 if __name__ == '__main__':
     app.run()

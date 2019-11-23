@@ -20,6 +20,9 @@ Then you can compress some files using `curl`:
 curl -F "file=@/home/servb/PycharmProjects/compression-server/text.txt" http://localhost:[PORT]/convert/zipLzma -o answer.zip
 ```
 
+## Accessing the flask server from browser.
+Print localhost:[PORT] in your browser's address bar.
+
 ## Running tests
 ```shell script
 python tests.py

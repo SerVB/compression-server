@@ -1,0 +1,13 @@
+body {
+    display: flex;
+    justify-content: center;
+}
+.main_container {
+    display: inline-block;
+    position: relative;
+}
+.main_container input[type="radio"] {
+    position: relative;
+    margin: 1em 2em;
+    width: fit-content;;
+}
